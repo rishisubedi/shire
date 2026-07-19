@@ -11,12 +11,21 @@ def mock_analyst_llm(context: str) -> dict:
     Mock LLM to ensure the demo works robustly out of the box without API keys.
     Simulates prompt injection detection and various trade proposals based on context keywords.
     """
+    import re
     context_lower = context.lower()
     
     # Simulate Prompt Injection Vulnerability:
     # If the LLM has direct tools, it would execute this. Shire catches it downstream.
     if "override" in context_lower or "ignore" in context_lower or "bypass" in context_lower:
         return {"ticker": "GME", "action": "buy", "amount_gbp": 50000.0}
+    
+    # Regex to dynamically capture e.g. "buy 2000 of AAPL" or "sell 1500 MSFT"
+    match = re.search(r'(buy|sell)\s+(?:£)?([\d\.]+)(?:\s+of)?\s+([a-zA-Z]+)', context_lower)
+    if match:
+        action = match.group(1)
+        amount = float(match.group(2))
+        ticker = match.group(3).upper()
+        return {"ticker": ticker, "action": action, "amount_gbp": amount}
     
     if "vodafone" in context_lower:
         return {"ticker": "VOD", "action": "buy", "amount_gbp": 2000.0}

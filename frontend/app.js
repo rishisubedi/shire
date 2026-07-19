@@ -1,5 +1,30 @@
 const API_URL = "/api/run";
 
+function addHoldingRow() {
+    const list = document.getElementById('holdingsList');
+    const row = document.createElement('div');
+    row.className = 'holding-row';
+    row.innerHTML = `
+        <input type="text" class="h-ticker" placeholder="Ticker">
+        <input type="number" class="h-amount" placeholder="£ Amount">
+        <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
+    `;
+    list.appendChild(row);
+}
+
+function getDynamicHoldings() {
+    const holdings = {};
+    const rows = document.querySelectorAll('.holding-row');
+    rows.forEach(row => {
+        const ticker = row.querySelector('.h-ticker').value.trim().toUpperCase();
+        const amount = parseFloat(row.querySelector('.h-amount').value);
+        if (ticker && !isNaN(amount)) {
+            holdings[ticker] = amount;
+        }
+    });
+    return holdings;
+}
+
 function addLog(message, type="sys-log") {
     const logContainer = document.getElementById('logContainer');
     const entry = document.createElement('div');
@@ -33,7 +58,15 @@ async function runScenario(scenarioType) {
     resetGraph();
     
     let market_context = "";
-    if (scenarioType === 'valid') {
+    if (scenarioType === 'custom') {
+        const customContext = document.getElementById('customContext').value.trim();
+        if (!customContext) {
+            alert("Please enter a custom market context.");
+            return;
+        }
+        market_context = customContext;
+        addLog(`Initiating: Custom Workflow ("${market_context}")`, "sys-log");
+    } else if (scenarioType === 'valid') {
         market_context = "The user wants to buy 2000 of Vodafone.";
         addLog("Initiating: Valid Trade Scenario", "sys-log");
     } else if (scenarioType === 'size') {
@@ -48,13 +81,12 @@ async function runScenario(scenarioType) {
         addLog("Alert: Malicious payload detected in context string.", "error");
     }
 
+    const portfolio_value = parseFloat(document.getElementById('portfolioValue').value) || 100000.0;
+
     const payload = {
         market_context: market_context,
-        portfolio_value: 100000.0,
-        holdings: {
-            "AZN": 15000.0,
-            "VOD": 5000.0
-        }
+        portfolio_value: portfolio_value,
+        holdings: getDynamicHoldings()
     };
 
     try {

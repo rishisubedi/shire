@@ -6,6 +6,8 @@ from typing import Dict
 import os
 
 from .graph import build_graph
+from .ingress import SemanticDebiaser
+from .egress import EgressGuardrail, EgressViolationError
 
 app = FastAPI(
     title="Shire Zero-Trust Engine API",
@@ -25,17 +27,33 @@ class RunSimulationRequest(BaseModel):
 async def run_simulation(req: RunSimulationRequest):
     """
     Executes a LangGraph trade simulation given a market context and portfolio.
-    Returns the final graph state containing the logs, risk assessment, and execution payload.
+    Routes through Ingress Security -> LangGraph Consensus Brain -> Egress Guardrail.
     """
+    # 1. Ingress Security Layer (Semantic De-biasing)
+    cleaned_context, ingress_logs = SemanticDebiaser.process(req.market_context)
+
     initial_state = {
-        "market_context": req.market_context,
+        "market_context": cleaned_context,
         "portfolio_value": req.portfolio_value,
         "holdings": req.holdings,
-        "logs": []
+        "logs": ingress_logs
     }
     
     try:
+        # 2. Isolated LangGraph Orchestration Engine
         final_state = shire_graph.invoke(initial_state)
+        
+        # 3. Egress Tool-Calling Guardrail (Runtime Barrier)
+        execution_payload = final_state.get("execution_payload")
+        if execution_payload:
+            try:
+                validated_payload, egress_logs = EgressGuardrail.validate_and_format(execution_payload)
+                final_state["logs"].extend(egress_logs)
+                final_state["execution_payload"] = validated_payload
+            except EgressViolationError as e:
+                final_state["logs"].append(f"🛑 EGRESS RUNTIME CONNECTION DROPPED: {str(e)}")
+                final_state["execution_payload"] = None
+
         return final_state
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

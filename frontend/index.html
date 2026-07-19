@@ -77,6 +77,16 @@
             <section class="graph-visualizer glass-panel">
                 <h2>Execution Graph</h2>
                 <div class="graph-container">
+                    <!-- Node 0: Ingress -->
+                    <div class="node" id="node-ingress">
+                        <div class="node-header">Ingress Security Gate</div>
+                        <div class="node-body">
+                            <span class="badge badge-success">Semantic De-biasing</span>
+                            <div class="node-content" id="content-ingress">Awaiting stream...</div>
+                        </div>
+                    </div>
+                    <div class="edge" id="edge-0">↓</div>
+
                     <!-- Node 1 -->
                     <div class="node" id="node-analyst">
                         <div class="node-header">1. Analyst Agent</div>
@@ -117,6 +127,17 @@
                             <div class="node-body">
                                 <div class="node-content" id="content-halted">State rejected.</div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="edge" id="edge-3">↓</div>
+                    
+                    <!-- Node 4: Egress -->
+                    <div class="node" id="node-egress">
+                        <div class="node-header">Egress Guardrail</div>
+                        <div class="node-body">
+                            <span class="badge badge-info">Runtime Barrier</span>
+                            <div class="node-content" id="content-egress">Awaiting payload validation...</div>
                         </div>
                     </div>
                 </div>

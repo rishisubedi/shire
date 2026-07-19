@@ -39,17 +39,19 @@ function clearLogs() {
 }
 
 function resetGraph() {
-    ['node-analyst', 'node-gatekeeper', 'node-execution', 'node-halted'].forEach(id => {
+    ['node-ingress', 'node-analyst', 'node-gatekeeper', 'node-execution', 'node-halted', 'node-egress'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             // Remove success, error, active classes
             el.classList.remove('success', 'error', 'active');
         }
     });
+    document.getElementById('content-ingress').textContent = 'Awaiting stream...';
     document.getElementById('content-analyst').textContent = 'Awaiting execution...';
     document.getElementById('content-gatekeeper').textContent = 'Awaiting state...';
     document.getElementById('content-execution').textContent = 'Awaiting signature...';
     document.getElementById('content-halted').textContent = 'State rejected.';
+    document.getElementById('content-egress').textContent = 'Awaiting payload validation...';
     document.getElementById('cryptoHash').textContent = '--';
 }
 
@@ -90,10 +92,9 @@ async function runScenario(scenarioType) {
     };
 
     try {
-        addLog("Sending state to LangGraph engine...", "sys-log");
+        addLog("Sending stream to Ingress Gate...", "sys-log");
         
-        // Step 1: Analyst visual start
-        document.getElementById('node-analyst').classList.add('active');
+        document.getElementById('node-ingress').classList.add('active');
         
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -103,18 +104,36 @@ async function runScenario(scenarioType) {
         
         const data = await response.json();
         
-        // Render logs dynamically based on the state result
         renderSimulationResult(data);
         
     } catch (error) {
         addLog(`Error connecting to server: ${error.message}`, "error");
-        document.getElementById('node-analyst').classList.remove('active');
+        document.getElementById('node-ingress').classList.remove('active');
     }
 }
 
 function renderSimulationResult(data) {
     const logs = data.logs || [];
     
+    // Ingress Evaluation
+    setTimeout(() => {
+        const ingressLogs = logs.filter(l => l.includes("INGRESS"));
+        const alertLog = ingressLogs.find(l => l.includes("ALERT"));
+        if (alertLog) {
+            document.getElementById('node-ingress').classList.replace('active', 'error');
+            document.getElementById('content-ingress').textContent = "Sanitized Prompt Injection";
+            ingressLogs.forEach(l => {
+                if (l.includes("ALERT")) addLog(l, "error");
+                else addLog(l, "sys-log");
+            });
+        } else {
+            document.getElementById('node-ingress').classList.replace('active', 'success');
+            document.getElementById('content-ingress').textContent = "Context Clean";
+            ingressLogs.forEach(l => addLog(l, "sys-log"));
+        }
+        document.getElementById('node-analyst').classList.add('active');
+    }, 500);
+
     // Analyst Node Evaluation
     setTimeout(() => {
         const trade = data.proposed_trade;
@@ -122,13 +141,16 @@ function renderSimulationResult(data) {
             document.getElementById('content-analyst').textContent = 
                 `PROPOSED: ${trade.action.toUpperCase()} £${trade.amount_gbp} ${trade.ticker}`;
             document.getElementById('node-analyst').classList.replace('active', 'success');
+        } else {
+            // Re-use active for no-trade
+            document.getElementById('content-analyst').textContent = 'No trade proposed';
         }
         document.getElementById('node-gatekeeper').classList.add('active');
         
         const analystLog = logs.find(l => l.includes("Analyst Agent"));
         if(analystLog) addLog(analystLog, "sys-log");
         
-    }, 500);
+    }, 1500);
 
     // Gatekeeper Node Evaluation
     setTimeout(() => {
@@ -154,23 +176,50 @@ function renderSimulationResult(data) {
                 document.getElementById('node-halted').classList.add('error');
             }
         }
-    }, 1500);
+    }, 2500);
 
     // Execution Node Evaluation
     setTimeout(() => {
         const assessment = data.risk_assessment;
         if(assessment && assessment.approved) {
             const payload = data.execution_payload;
-            document.getElementById('content-execution').textContent = JSON.stringify(payload, null, 2);
-            document.getElementById('node-execution').classList.replace('active', 'success');
-            
-            const execLogs = logs.filter(l => l.includes("Execution Agent:"));
-            execLogs.forEach(l => addLog(l, "success"));
-            
+            if (payload) {
+                document.getElementById('content-execution').textContent = JSON.stringify(payload, null, 2);
+                document.getElementById('node-execution').classList.replace('active', 'success');
+                
+                const execLogs = logs.filter(l => l.includes("Execution Agent:"));
+                execLogs.forEach(l => addLog(l, "success"));
+                
+                document.getElementById('node-egress').classList.add('active');
+            }
         } else {
             document.getElementById('content-halted').textContent = "State permanently rejected. No tools fired.";
             const haltLog = logs.find(l => l.includes("Execution Halted"));
             if(haltLog) addLog(haltLog, "error");
         }
-    }, 2500);
+    }, 3500);
+
+    // Egress Guardrail Evaluation
+    setTimeout(() => {
+        const assessment = data.risk_assessment;
+        if(assessment && assessment.approved) {
+            const egressFail = logs.some(l => l.includes("CRITICAL EGRESS FAILURE"));
+            const eLogs = logs.filter(l => l.includes("EGRESS"));
+            if(egressFail) {
+                document.getElementById('node-egress').classList.replace('active', 'error');
+                document.getElementById('content-egress').textContent = "Payload failed strict schema validation. Connection dropped.";
+                eLogs.forEach(l => {
+                    if(l.includes("FAILURE") || l.trim().startsWith("-")) addLog(l, "error");
+                    else addLog(l, "sys-log");
+                });
+            } else {
+                document.getElementById('node-egress').classList.replace('active', 'success');
+                document.getElementById('content-egress').textContent = "Payload strictly validated. Ready for Broker.";
+                eLogs.forEach(l => {
+                    if(l.includes("perfectly conforms")) addLog(l, "success");
+                    else addLog(l, "sys-log");
+                });
+            }
+        }
+    }, 4500);
 }

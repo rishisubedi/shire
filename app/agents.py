@@ -1,64 +1,52 @@
 import logging
 from typing import Dict, Any
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .state import ShireState, ProposedTrade
 from .risk_engine import run_risk_audit, generate_trade_signature, verify_trade_signature
 
 logger = logging.getLogger(__name__)
 
-def mock_analyst_llm(context: str) -> dict:
-    """
-    Mock LLM to ensure the demo works robustly out of the box without API keys.
-    Simulates prompt injection detection and various trade proposals based on context keywords.
-    """
-    import re
-    context_lower = context.lower()
-    
-    # Simulate Prompt Injection Vulnerability:
-    # If the LLM has direct tools, it would execute this. Shire catches it downstream.
-    if "override" in context_lower or "ignore" in context_lower or "bypass" in context_lower:
-        return {"ticker": "GME", "action": "buy", "amount_gbp": 50000.0}
-    
-    # Regex to dynamically capture e.g. "buy 2000 of AAPL" or "sell 1500 MSFT"
-    match = re.search(r'(buy|sell)\s+(?:£)?([\d\.]+)(?:\s+of)?\s+([a-zA-Z]+)', context_lower)
-    if match:
-        action = match.group(1)
-        amount = float(match.group(2))
-        ticker = match.group(3).upper()
-        return {"ticker": ticker, "action": action, "amount_gbp": amount}
-    
-    if "vodafone" in context_lower:
-        return {"ticker": "VOD", "action": "buy", "amount_gbp": 2000.0}
-    
-    if "astrazeneca" in context_lower and "10000" in context_lower:
-        return {"ticker": "AZN", "action": "buy", "amount_gbp": 10000.0}
-        
-    if "astrazeneca" in context_lower:
-        return {"ticker": "AZN", "action": "buy", "amount_gbp": 3000.0}
-        
-    return {"ticker": "AAPL", "action": "buy", "amount_gbp": 1000.0}
-
 def analyst_node(state: ShireState) -> Dict[str, Any]:
     """
     1. Analyst Agent
-    Scans market context and proposes a trade. 
+    Scans market context and proposes a trade using a real LLM. 
     SECURITY: This node HAS ZERO TOOL ACCESS. It can only propose state.
     """
     context = state.get("market_context", "")
     
-    # In production:
-    # llm = ChatOpenAI(model="gpt-4", temperature=0).with_structured_output(ProposedTrade)
-    # trade = llm.invoke(context)
+    # Initialize the real LLM with strict output formatting
+    api_key = os.getenv("GOOGLE_API_KEY", "dummy_key")
     
-    raw_trade = mock_analyst_llm(context)
-    proposed_trade = ProposedTrade(**raw_trade)
-    
-    log_msg = f"🔍 Analyst Agent proposed: {proposed_trade.action.upper()} £{proposed_trade.amount_gbp:,.2f} of {proposed_trade.ticker}"
-    
-    return {
-        "proposed_trade": proposed_trade.model_dump(),
-        "logs": [log_msg]
-    }
+    try:
+        # We use gemini-1.5-flash as it is fast and supports structured outputs well.
+        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, google_api_key=api_key)
+        structured_llm = llm.with_structured_output(ProposedTrade)
+        
+        prompt = f"""
+        You are a highly sophisticated financial analyst agent. 
+        Analyze the following market context and determine the requested trade action.
+        Extract the ticker symbol, the action (buy or sell), and the absolute amount in GBP.
+        
+        Market Context:
+        {context}
+        """
+        
+        proposed_trade = structured_llm.invoke(prompt)
+        
+        log_msg = f"🧠 Analyst LLM Reasoned Trade: {proposed_trade.action.upper()} £{proposed_trade.amount_gbp:,.2f} of {proposed_trade.ticker}"
+        
+        return {
+            "proposed_trade": proposed_trade.model_dump(),
+            "logs": [log_msg]
+        }
+        
+    except Exception as e:
+        log_msg = f"❌ Analyst LLM Error (Check API Key): {str(e)}"
+        return {
+            "logs": [log_msg]
+        }
 
 def gatekeeper_node(state: ShireState) -> Dict[str, Any]:
     """

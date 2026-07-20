@@ -4,6 +4,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from .graph import build_graph
 from .ingress import SemanticDebiaser

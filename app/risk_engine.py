@@ -13,10 +13,22 @@ SECRET_KEY = os.getenv("SHIRE_HMAC_SECRET", "super_secret_shire_key_2026").encod
 # ==========================================
 # FCA-Aligned Deterministic Risk Guardrails
 # ==========================================
-MAX_CONCENTRATION_PCT = 0.20     # Max 20% of total portfolio value in a single asset
-MAX_ORDER_SIZE_GBP = 5000.0      # Hard cap of £5,000 per individual trade
-RESTRICTED_ASSETS = {"GME", "AMC", "DOGE", "PEPE"}  # Meme stocks / forbidden high-risk assets
+MAX_CONCENTRATION_PCT = 0.20     # Max 20% of total portfolio value in Equity
+CRYPTO_MAX_CONCENTRATION_PCT = 0.05 # Max 5% of portfolio value for Crypto
+MAX_ORDER_SIZE_GBP = 5000.0      # Hard cap of £5,000 per Equity trade
+OPTIONS_MAX_ORDER_SIZE_GBP = 2000.0 # Strict £2,000 cap for Options trades
+RESTRICTED_ASSETS = {"GME", "AMC", "DOGE", "PEPE"}  # Forbidden high-risk assets
 
+# Hardcoded FX Rates (Base: GBP)
+FX_RATES = {
+    "GBP": 1.0,
+    "USD": 0.78,
+    "EUR": 0.85
+}
+
+def get_gbp_value(amount: float, currency: str) -> float:
+    rate = FX_RATES.get(currency.upper(), 1.0)
+    return amount * rate
 
 def generate_trade_signature(trade_data: dict) -> str:
     """
@@ -45,34 +57,40 @@ def run_risk_audit(proposed_trade: dict, portfolio_value: float, holdings: Dict[
     
     ticker = proposed_trade.get("ticker", "").upper()
     action = proposed_trade.get("action", "").lower()
+    asset_class = proposed_trade.get("asset_class", "EQUITY").upper()
+    currency = proposed_trade.get("currency", "GBP").upper()
     
     try:
-        amount = float(proposed_trade.get("amount_gbp", 0.0))
+        amount = float(proposed_trade.get("amount", 0.0))
+        amount_gbp = get_gbp_value(amount, currency)
     except (TypeError, ValueError):
         return {
             "approved": False,
-            "reason": "Invalid amount_gbp provided.",
-            "violations": ["amount_gbp must be a valid number."]
+            "reason": "Invalid amount provided.",
+            "violations": ["amount must be a valid number."]
         }
     
     # 1. Restricted Asset Check
     if ticker in RESTRICTED_ASSETS:
         violations.append(f"Asset '{ticker}' is on the restricted high-risk list.")
         
-    # 2. Order Size Check
-    if amount > MAX_ORDER_SIZE_GBP:
-        violations.append(f"Order size £{amount:.2f} exceeds the maximum allowed £{MAX_ORDER_SIZE_GBP:.2f}.")
+    # 2. Order Size Check (Asset-class dependent)
+    max_order = OPTIONS_MAX_ORDER_SIZE_GBP if asset_class == "OPTION" else MAX_ORDER_SIZE_GBP
+    if amount_gbp > max_order:
+        violations.append(f"Order size £{amount_gbp:.2f} exceeds the {asset_class} maximum allowed £{max_order:.2f}.")
         
     # 3. Concentration Risk Check (Only checked on BUY)
     if action == "buy":
-        current_holding = holdings.get(ticker, 0.0)
-        new_holding = current_holding + amount
-        # Calculate new concentration ratio. (Assuming portfolio_value represents current total equity)
+        max_concentration = CRYPTO_MAX_CONCENTRATION_PCT if asset_class == "CRYPTO" else MAX_CONCENTRATION_PCT
+        
+        current_holding = holdings.get(ticker, 0.0) # Assuming holding dict values are already in GBP
+        new_holding = current_holding + amount_gbp
+        # Calculate new concentration ratio. (Assuming portfolio_value represents current total equity in GBP)
         concentration = new_holding / portfolio_value
-        if concentration > MAX_CONCENTRATION_PCT:
+        if concentration > max_concentration:
             violations.append(
                 f"Post-trade concentration of {ticker} ({concentration*100:.1f}%) "
-                f"exceeds the {MAX_CONCENTRATION_PCT*100:.1f}% regulatory limit."
+                f"exceeds the {asset_class} regulatory limit of {max_concentration*100:.1f}%."
             )
             
     if violations:

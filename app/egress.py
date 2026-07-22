@@ -13,9 +13,10 @@ class StrictBrokerPayload(BaseModel):
     """
     broker_action: str = Field(pattern="^EXECUTE_MARKET_ORDER$")
     asset: str = Field(min_length=1, max_length=10)
+    asset_class: str = Field(pattern="^(EQUITY|CRYPTO|OPTION)$")
     side: str = Field(pattern="^(BUY|SELL)$")
     notional_value: float = Field(gt=0, le=ABSOLUTE_MAX_ORDER_SIZE)
-    currency: str = Field(pattern="^GBP$")
+    currency: str = Field(pattern="^(GBP|USD|EUR)$")
     compliance_token: str = Field(min_length=32)
     execution_timestamp: str
 

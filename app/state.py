@@ -4,9 +4,11 @@ from pydantic import BaseModel, Field
 
 class ProposedTrade(BaseModel):
     """Structured output expected from the Analyst Agent."""
-    ticker: str = Field(..., description="The stock ticker symbol (e.g., AAPL, AZN, VOD)")
+    ticker: str = Field(..., description="The stock or crypto ticker symbol (e.g., AAPL, AZN, BTC)")
     action: str = Field(..., description="Action to perform: 'buy' or 'sell'")
-    amount_gbp: float = Field(..., description="Total value of the trade in GBP", ge=0)
+    amount: float = Field(..., description="Total notional value of the trade", ge=0)
+    currency: str = Field(..., description="The currency of the trade: 'GBP', 'USD', or 'EUR'")
+    asset_class: str = Field(..., description="The asset class: 'EQUITY', 'CRYPTO', or 'OPTION'")
 
 class RiskAssessment(BaseModel):
     """Deterministic assessment result from the Risk Gatekeeper."""

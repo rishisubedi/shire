@@ -28,21 +28,21 @@
                 <h2>Simulation Controls</h2>
                 
                 <div class="control-group">
-                    <label>Portfolio Value (£)</label>
+                    <label>Portfolio Value Base (GBP)</label>
                     <input type="number" id="portfolioValue" value="100000">
                 </div>
                 
                 <div class="control-group">
-                    <label>Current Holdings</label>
+                    <label>Current Holdings (in GBP)</label>
                     <div class="holdings-list" id="holdingsList">
                         <div class="holding-row">
                             <input type="text" class="h-ticker" value="AZN" placeholder="Ticker">
-                            <input type="number" class="h-amount" value="15000" placeholder="£ Amount">
+                            <input type="number" class="h-amount" value="15000" placeholder="Value">
                             <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
                         </div>
                         <div class="holding-row">
                             <input type="text" class="h-ticker" value="VOD" placeholder="Ticker">
-                            <input type="number" class="h-amount" value="5000" placeholder="£ Amount">
+                            <input type="number" class="h-amount" value="5000" placeholder="Value">
                             <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
                         </div>
                     </div>
@@ -59,13 +59,13 @@
                 <p class="helper-text">Select a scenario to test the LangGraph state machine.</p>
                 <div class="scenario-buttons">
                     <button class="btn btn-valid" onclick="runScenario('valid')">
-                        <span class="icon">✅</span> Valid Trade (VOD £2000)
+                        <span class="icon">✅</span> Valid Trade (AAPL $2000)
                     </button>
                     <button class="btn btn-viol-size" onclick="runScenario('size')">
                         <span class="icon">📏</span> Violation (Size > £5K)
                     </button>
-                    <button class="btn btn-viol-conc" onclick="runScenario('concentration')">
-                        <span class="icon">📊</span> Violation (Concentration > 20%)
+                    <button class="btn btn-viol-conc" onclick="runScenario('crypto')">
+                        <span class="icon">🪙</span> Crypto Violation (BTC $50K)
                     </button>
                     <button class="btn btn-danger" onclick="runScenario('injection')">
                         <span class="icon">⚠️</span> Prompt Injection Attack

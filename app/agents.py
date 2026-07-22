@@ -27,7 +27,7 @@ def analyst_node(state: ShireState) -> Dict[str, Any]:
         prompt = f"""
         You are a highly sophisticated financial analyst agent. 
         Analyze the following market context and determine the requested trade action.
-        Extract the ticker symbol, the action (buy or sell), and the absolute amount in GBP.
+        Extract the ticker symbol, the action (buy or sell), the absolute amount, the currency (GBP, USD, EUR) based on the symbol (e.g. $, £, €), and the asset_class (EQUITY, CRYPTO, OPTION).
         
         Market Context:
         {context}
@@ -35,7 +35,10 @@ def analyst_node(state: ShireState) -> Dict[str, Any]:
         
         proposed_trade = structured_llm.invoke(prompt)
         
-        log_msg = f"🧠 Analyst LLM Reasoned Trade: {proposed_trade.action.upper()} £{proposed_trade.amount_gbp:,.2f} of {proposed_trade.ticker}"
+        # Determine appropriate symbol for logging
+        sym = "£" if proposed_trade.currency == "GBP" else "$" if proposed_trade.currency == "USD" else "€"
+        
+        log_msg = f"🧠 Analyst LLM Reasoned Trade: {proposed_trade.action.upper()} {sym}{proposed_trade.amount:,.2f} of {proposed_trade.ticker} ({proposed_trade.asset_class})"
         
         return {
             "proposed_trade": proposed_trade.model_dump(),
@@ -104,16 +107,19 @@ def execution_node(state: ShireState) -> Dict[str, Any]:
     execution_payload = {
         "broker_action": "EXECUTE_MARKET_ORDER",
         "asset": proposed_trade.get("ticker"),
+        "asset_class": proposed_trade.get("asset_class"),
         "side": proposed_trade.get("action").upper(),
-        "notional_value": proposed_trade.get("amount_gbp"),
-        "currency": "GBP",
+        "notional_value": proposed_trade.get("amount"),
+        "currency": proposed_trade.get("currency"),
         "compliance_token": signature,
         "execution_timestamp": "now" # In real app, datetime.now().isoformat()
     }
     
+    sym = "£" if execution_payload["currency"] == "GBP" else "$" if execution_payload["currency"] == "USD" else "€"
+    
     logs = [
         "✅ Execution Agent: Signature verified securely.",
-        f"🚀 Execution Agent: Trade payload generated for broker -> {execution_payload['side']} {execution_payload['asset']} £{execution_payload['notional_value']:,.2f}"
+        f"🚀 Execution Agent: Trade payload generated for broker -> {execution_payload['side']} {execution_payload['asset']} {sym}{execution_payload['notional_value']:,.2f}"
     ]
     
     return {

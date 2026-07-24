@@ -49,6 +49,12 @@
                     <button class="btn-add-holding" onclick="addHoldingRow()">+ Add Holding</button>
                 </div>
 
+                <h3>Help Me Invest (AI Auto-Pilot)</h3>
+                <div class="control-group">
+                    <button class="btn btn-valid" onclick="fetchRecommendations(this)" style="width: 100%; justify-content: center; margin-bottom: 0.5rem; background: var(--secondary);">✨ Suggest Safe Trades</button>
+                    <div id="recommendationsList" class="recommendations-container"></div>
+                </div>
+
                 <h3>Custom Execution</h3>
                 <div class="control-group">
                     <textarea id="customContext" rows="3" placeholder="E.g., 'Buy 2000 of MSFT' or 'Sell 1000 TSLA'"></textarea>

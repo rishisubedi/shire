@@ -11,6 +11,7 @@ load_dotenv()
 from .graph import build_graph
 from .ingress import SemanticDebiaser
 from .egress import EgressGuardrail, EgressViolationError
+from .agents import recommend_trades
 
 app = FastAPI(
     title="Shire Zero-Trust Engine API",
@@ -25,6 +26,15 @@ class RunSimulationRequest(BaseModel):
     market_context: str
     portfolio_value: float = 100000.0
     holdings: Dict[str, float] = {}
+
+class RecommendRequest(BaseModel):
+    portfolio_value: float = 100000.0
+    holdings: Dict[str, float] = {}
+
+@app.post("/api/recommend")
+async def get_recommendations(req: RecommendRequest):
+    """Generates beginner-friendly safe trade recommendations."""
+    return recommend_trades(req.portfolio_value, req.holdings)
 
 @app.post("/api/run")
 async def run_simulation(req: RunSimulationRequest):

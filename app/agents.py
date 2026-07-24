@@ -1,12 +1,43 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 import os
+from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .state import ShireState, ProposedTrade
 from .risk_engine import run_risk_audit, generate_trade_signature, verify_trade_signature
 
 logger = logging.getLogger(__name__)
+
+class TradeRecommendation(BaseModel):
+    rationale: str = Field(description="Why this trade is safe and diversified based on the current portfolio.")
+    suggested_prompt: str = Field(description="A plain English string like 'Buy $1000 of AAPL'")
+
+class RecommendationList(BaseModel):
+    recommendations: List[TradeRecommendation]
+
+def recommend_trades(portfolio_value: float, holdings: Dict[str, float]) -> dict:
+    """Uses LLM to recommend 3 safe, diversified trades for a beginner user."""
+    api_key = os.getenv("GOOGLE_API_KEY", "dummy_key")
+    try:
+        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7, google_api_key=api_key)
+        structured_llm = llm.with_structured_output(RecommendationList)
+        
+        prompt = f"""
+        You are a helpful, conservative financial advisor. 
+        The user is a beginner. Their current portfolio value is {portfolio_value}.
+        Their current holdings (in GBP) are: {holdings}.
+        
+        Suggest 3 safe, diversified trades (EQUITY only, no Crypto or Options) they could make right now to balance their portfolio.
+        Ensure no single trade is larger than 4000 in notional value. 
+        Provide a very friendly, jargon-free rationale for each.
+        The suggested_prompt must be a simple natural language string like 'Buy $1000 of AAPL' or 'Buy £500 of VOD'.
+        """
+        
+        result = structured_llm.invoke(prompt)
+        return result.model_dump()
+    except Exception as e:
+        return {"error": str(e), "recommendations": []}
 
 def analyst_node(state: ShireState) -> Dict[str, Any]:
     """

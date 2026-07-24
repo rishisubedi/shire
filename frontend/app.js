@@ -25,6 +25,54 @@ function getDynamicHoldings() {
     return holdings;
 }
 
+async function fetchRecommendations(btn) {
+    const originalText = btn.textContent;
+    btn.textContent = "✨ Analyzing Portfolio...";
+    btn.disabled = true;
+    
+    const payload = {
+        portfolio_value: parseFloat(document.getElementById('portfolioValue').value) || 100000.0,
+        holdings: getDynamicHoldings()
+    };
+    
+    try {
+        const response = await fetch('/api/recommend', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        
+        const container = document.getElementById('recommendationsList');
+        container.innerHTML = '';
+        
+        if (data.recommendations && data.recommendations.length > 0) {
+            data.recommendations.forEach(rec => {
+                const card = document.createElement('div');
+                card.className = 'rec-card';
+                card.innerHTML = `
+                    <div class="rec-prompt"><strong>${rec.suggested_prompt}</strong></div>
+                    <div class="rec-rationale">${rec.rationale}</div>
+                    <button class="btn-sm" onclick="applyRecommendation('${rec.suggested_prompt.replace(/'/g, "\\'")}')">Execute</button>
+                `;
+                container.appendChild(card);
+            });
+        } else {
+            container.innerHTML = `<div style="color:var(--danger);font-size:0.8rem;margin-top:0.5rem;">Failed to generate recommendations. (Did you add your Gemini API key to .env?)</div>`;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    
+    btn.textContent = originalText;
+    btn.disabled = false;
+}
+
+function applyRecommendation(promptText) {
+    document.getElementById('customContext').value = promptText;
+    runScenario('custom');
+}
+
 function addLog(message, type="sys-log") {
     const logContainer = document.getElementById('logContainer');
     const entry = document.createElement('div');

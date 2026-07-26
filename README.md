@@ -20,6 +20,19 @@ Shire enforces a zero-trust architecture at the state-machine level, ensuring th
 
 Shire operates via isolated computing nodes bound by a strict, immutable state machine powered by **LangGraph**. Instead of a single monolithic agent that handles both analysis and trade execution, the pipeline is strictly segmented.
 
+```mermaid
+graph TD
+    A[User Input / Market Context] -->|Raw Data| B[Ingress Security Layer]
+    B -->|Sanitized Context| C(1. Analyst Agent)
+    C -->|JSON Proposed Trade| D{2. Risk Gatekeeper}
+    D -->|Rejected| E[Execution Halted]
+    D -->|Approved + HMAC Signature| F(3. Execution Agent)
+    F -->|Invalid Signature| E
+    F -->|Valid Signature| G[Egress Guardrail]
+    G -->|Pydantic Failure| E
+    G -->|Validated Payload| H[Brokerage API / Execution]
+```
+
 ### A. Ingress Security & Data Ingestion Layer
 Before any financial data or user prompt touches the agent network, it passes through the Ingress Security Gate (`app/ingress.py`).
 *   **Semantic De-biasing**: Standardizes raw textual context, actively scanning for and stripping out manipulative prompt injections (e.g., "IGNORE PREVIOUS INSTRUCTIONS") designed to bypass limits. 
@@ -51,6 +64,15 @@ The entire application relies on state passing.
 1. **State Definition (`app/state.py`)**: The `ShireState` `TypedDict` dictates exactly what data is allowed to flow between nodes. It prevents arbitrary data injection.
 2. **Cryptographic Signatures**: To prevent node-spoofing (e.g. the Analyst bypassing the Gatekeeper and sending data directly to Execution), Shire uses an HMAC SHA-256 signature algorithm. The Gatekeeper signs the trade using a secret internal environment key. The Execution node strictly verifies this signature before formatting the payload.
 3. **Dynamic Evaluation**: The web dashboard allows users to dynamically edit their portfolio holdings (Cash, US/UK Stocks) and issue completely unstructured commands like *"Buy 10,000 of MSFT"* to watch the LLM reason and the Guardrails react in real-time.
+
+---
+
+## 👤 Usability (Retail vs Institutional)
+
+Shire is designed to be accessible for complete beginners while maintaining institutional-grade security under the hood.
+
+*   **For Basic Users (AI Auto-Pilot)**: The dashboard includes a "Help Me Invest" button. This triggers a dedicated LLM call that analyzes the user's current holdings and suggests 3 safe, highly diversified trades in plain English. Clicking "Execute" pipes the plain-English recommendation directly into the secure LangGraph pipeline.
+*   **For Institutional Testing**: Risk managers can manually type custom strings into the "Custom Execution" box or use preset buttons to intentionally trigger algorithmic violations (e.g., Crypto concentration breaches, size limits, or malicious prompt injection attacks) to observe the zero-trust guardrails in action.
 
 ---
 

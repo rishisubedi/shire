@@ -61,6 +61,14 @@
                     <button class="btn btn-valid" onclick="runScenario('custom')" style="width: 100%; justify-content: center; margin-top: 0.5rem;">Run Custom Workflow</button>
                 </div>
 
+                <h3>Institutional Sandbox</h3>
+                <p class="helper-text">Simulate macro orchestration.</p>
+                <div class="control-group">
+                    <button class="btn btn-valid" onclick="runScenario('rebalance')" style="width: 100%; justify-content: center; background: #6b46c1;">
+                        <span class="icon">🏢</span> Automated Bulk Rebalance
+                    </button>
+                </div>
+
                 <h3>Preset Scenarios</h3>
                 <p class="helper-text">Select a scenario to test the LangGraph state machine.</p>
                 <div class="scenario-buttons">
@@ -159,6 +167,13 @@
                 <div class="cryptography-panel" id="cryptoPanel">
                     <h3>HMAC Signature</h3>
                     <div class="crypto-hash" id="cryptoHash">--</div>
+                    <button class="btn btn-valid" onclick="downloadAuditLedger()" style="width: 100%; margin-top: 0.5rem; justify-content: center; background: var(--secondary);">⬇️ Download Audit Ledger (.json)</button>
+                </div>
+                
+                <div class="api-view-panel" style="margin-top: 1rem;">
+                    <h3>Developer API Hub</h3>
+                    <button class="btn btn-valid" onclick="toggleApiView()" style="width: 100%; margin-bottom: 0.5rem; justify-content: center; background: #2d3748;">💻 Toggle Raw JSON Payload</button>
+                    <pre id="apiJsonView" style="display: none; background: #1a202c; color: #a0aec0; padding: 10px; border-radius: 4px; font-size: 0.75rem; overflow-x: auto; max-height: 300px; font-family: 'JetBrains Mono', monospace;"></pre>
                 </div>
             </section>
         </main>

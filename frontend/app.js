@@ -1,5 +1,8 @@
 const API_URL = "/api/run";
 
+let lastApiRequest = null;
+let lastApiResponse = null;
+let apiViewVisible = false;
 function addHoldingRow() {
     const list = document.getElementById('holdingsList');
     const row = document.createElement('div');
@@ -116,6 +119,9 @@ async function runScenario(scenarioType) {
         }
         market_context = customContext;
         addLog(`Initiating: Custom Workflow ("${market_context}")`, "sys-log");
+    } else if (scenarioType === 'rebalance') {
+        market_context = "Liquidate 15% of all tech equities across Client Group A and rotate into short-duration bonds.";
+        addLog("Initiating: Enterprise Bulk Rebalance (API Webhook)", "sys-log");
     } else if (scenarioType === 'valid') {
         market_context = "The user wants to buy 2000 USD of Apple stock.";
         addLog("Initiating: Valid Trade Scenario (Multi-Currency USD)", "sys-log");
@@ -144,6 +150,8 @@ async function runScenario(scenarioType) {
         
         document.getElementById('node-ingress').classList.add('active');
         
+        lastApiRequest = payload;
+        
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -151,6 +159,8 @@ async function runScenario(scenarioType) {
         });
         
         const data = await response.json();
+        lastApiResponse = data;
+        updateApiView();
         
         renderSimulationResult(data);
         
@@ -271,4 +281,45 @@ function renderSimulationResult(data) {
             }
         }
     }, 4500);
+}
+
+function downloadAuditLedger() {
+    if (!lastApiResponse || !lastApiResponse.logs) {
+        alert("No audit logs available for the current session. Please run a simulation first.");
+        return;
+    }
+    
+    const exportData = {
+        timestamp: new Date().toISOString(),
+        fca_compliance_audit: true,
+        session_state: lastApiResponse
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `shire_audit_${Date.now()}.json`);
+    dlAnchorElem.click();
+}
+
+function toggleApiView() {
+    apiViewVisible = !apiViewVisible;
+    const view = document.getElementById('apiJsonView');
+    view.style.display = apiViewVisible ? 'block' : 'none';
+    if (apiViewVisible) {
+        updateApiView();
+    }
+}
+
+function updateApiView() {
+    if (!apiViewVisible) return;
+    const view = document.getElementById('apiJsonView');
+    if (!lastApiRequest && !lastApiResponse) {
+        view.textContent = "// No API calls made yet. Run a scenario.";
+        return;
+    }
+    view.textContent = "// RAW API PAYLOADS\\n\\n// 1. REQUEST (POST /api/run)\\n" + 
+        JSON.stringify(lastApiRequest, null, 2) + 
+        "\\n\\n// 2. RESPONSE\\n" + 
+        JSON.stringify(lastApiResponse, null, 2);
 }

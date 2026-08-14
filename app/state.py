@@ -15,6 +15,7 @@ class RiskAssessment(BaseModel):
     approved: bool
     reason: str
     violations: List[str] = Field(default_factory=list)
+    requires_human_approval: bool = False
 
 class ShireState(TypedDict):
     """
@@ -25,6 +26,8 @@ class ShireState(TypedDict):
     market_context: str
     portfolio_value: float
     holdings: Dict[str, float]
+    human_override_token: Optional[str]
+    
     
     # Workflow Progression
     proposed_trade: Optional[ProposedTrade]

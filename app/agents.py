@@ -94,18 +94,25 @@ def gatekeeper_node(state: ShireState) -> Dict[str, Any]:
         
     portfolio_value = state.get("portfolio_value", 0.0)
     holdings = state.get("holdings", {})
+    human_override_token = state.get("human_override_token")
     
-    assessment = run_risk_audit(proposed_trade, portfolio_value, holdings)
+    assessment = run_risk_audit(proposed_trade, portfolio_value, holdings, human_override_token)
     
     logs = []
     signature = None
     
     if assessment["approved"]:
         signature = generate_trade_signature(proposed_trade)
-        logs.append("✅ Gatekeeper: Trade PASSED all FCA risk checks.")
+        if assessment.get("reason") == "Senior Risk Officer Override Authorized.":
+            logs.append("⚠️ Gatekeeper: HUMAN OVERRIDE AUTHORIZED. Standard checks bypassed.")
+        else:
+            logs.append("✅ Gatekeeper: Trade PASSED all FCA risk checks.")
         logs.append("🔐 Gatekeeper: Cryptographic HMAC signature attached to state.")
     else:
-        logs.append(f"⛔ Gatekeeper: Trade BLOCKED. Reason: {assessment['reason']}")
+        if assessment.get("requires_human_approval"):
+            logs.append("⏸️ Gatekeeper: High-Risk Trade. PAUSED for Senior Risk Officer override.")
+        else:
+            logs.append(f"⛔ Gatekeeper: Trade BLOCKED. Reason: {assessment['reason']}")
         for v in assessment["violations"]:
             logs.append(f"   - {v}")
             

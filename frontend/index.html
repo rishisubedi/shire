@@ -30,6 +30,10 @@
                 <div class="control-group">
                     <label>Portfolio Value Base (GBP)</label>
                     <input type="number" id="portfolioValue" value="100000">
+                    <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="stressTestToggle" style="width: auto; cursor: pointer;">
+                        <label for="stressTestToggle" style="font-size: 0.8rem; color: var(--danger); cursor: pointer; margin-bottom: 0;">🔥 Flash Crash Simulator (-30% NAV)</label>
+                    </div>
                 </div>
                 
                 <div class="control-group">
@@ -81,6 +85,9 @@
                     <button class="btn btn-viol-conc" onclick="runScenario('crypto')">
                         <span class="icon">🪙</span> Crypto Violation (BTC $50K)
                     </button>
+                    <button class="btn btn-warning" onclick="runScenario('whale')" style="border: 1px solid #ed8936; background: rgba(237,137,54,0.1); color: #ed8936;">
+                        <span class="icon">🐋</span> Whale Trade (£100K)
+                    </button>
                     <button class="btn btn-danger" onclick="runScenario('injection')">
                         <span class="icon">⚠️</span> Prompt Injection Attack
                     </button>
@@ -117,6 +124,9 @@
                         <div class="node-body">
                             <span class="badge badge-info">Deterministic Rules</span>
                             <div class="node-content" id="content-gatekeeper">Awaiting state...</div>
+                            <div id="hitlPanel" style="display: none; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
+                                <button class="btn-warning" onclick="approveOverride()" style="width: 100%; font-size: 0.75rem; padding: 4px; border-radius: 4px;">🔑 Approve Override</button>
+                            </div>
                         </div>
                     </div>
                     

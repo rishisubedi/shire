@@ -268,6 +268,16 @@ textarea {
 }
 .node.success { border-color: var(--accent-green); box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
 .node.error { border-color: var(--accent-red); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+.node.warning { border-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+
+.btn-warning {
+    background: #ed8936;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.btn-warning:hover { filter: brightness(1.1); }
 
 .node-header {
     background: rgba(255,255,255,0.05);
@@ -342,6 +352,7 @@ textarea {
 .log-entry.sys-log { border-color: var(--text-muted); color: var(--text-muted); }
 .log-entry.success { border-color: var(--accent-green); color: #d1fae5; }
 .log-entry.error { border-color: var(--accent-red); color: #fee2e2; }
+.log-entry.warning { border-color: var(--accent-yellow); color: #fef3c7; }
 
 .crypto-hash {
     background: #000;

@@ -26,6 +26,7 @@ class RunSimulationRequest(BaseModel):
     market_context: str
     portfolio_value: float = 100000.0
     holdings: Dict[str, float] = {}
+    human_override_token: str = None
 
 class RecommendRequest(BaseModel):
     portfolio_value: float = 100000.0
@@ -49,6 +50,7 @@ async def run_simulation(req: RunSimulationRequest):
         "market_context": cleaned_context,
         "portfolio_value": req.portfolio_value,
         "holdings": req.holdings,
+        "human_override_token": req.human_override_token,
         "logs": ingress_logs
     }
     

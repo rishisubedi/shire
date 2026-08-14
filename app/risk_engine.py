@@ -48,7 +48,7 @@ def verify_trade_signature(trade_data: dict, signature: str) -> bool:
     expected_sig = generate_trade_signature(trade_data)
     return secrets.compare_digest(expected_sig, signature)
 
-def run_risk_audit(proposed_trade: dict, portfolio_value: float, holdings: Dict[str, float]) -> dict:
+def run_risk_audit(proposed_trade: dict, portfolio_value: float, holdings: Dict[str, float], human_override_token: str = None) -> dict:
     """
     Evaluates a proposed trade against FCA-aligned deterministic guardrails.
     Returns a dictionary matching the RiskAssessment Pydantic schema.
@@ -67,9 +67,29 @@ def run_risk_audit(proposed_trade: dict, portfolio_value: float, holdings: Dict[
         return {
             "approved": False,
             "reason": "Invalid amount provided.",
-            "violations": ["amount must be a valid number."]
+            "violations": ["amount must be a valid number."],
+            "requires_human_approval": False
         }
     
+    # 0. High Risk Check (HITL - Human-In-The-Loop)
+    is_high_risk = amount_gbp >= 50000.0 or asset_class == "CRYPTO"
+    
+    if is_high_risk:
+        if human_override_token == "OVERRIDE_AUTH_123":
+            return {
+                "approved": True,
+                "reason": "Senior Risk Officer Override Authorized.",
+                "violations": [],
+                "requires_human_approval": False
+            }
+        else:
+            return {
+                "approved": False,
+                "reason": "High-Risk Trade. Awaiting Senior Risk Officer Approval.",
+                "violations": [f"Trade amount (£{amount_gbp:.2f}) or Asset Class ({asset_class}) requires HITL override."],
+                "requires_human_approval": True
+            }
+
     # 1. Restricted Asset Check
     if ticker in RESTRICTED_ASSETS:
         violations.append(f"Asset '{ticker}' is on the restricted high-risk list.")
@@ -97,11 +117,13 @@ def run_risk_audit(proposed_trade: dict, portfolio_value: float, holdings: Dict[
         return {
             "approved": False,
             "reason": "Failed FCA deterministic risk guardrails.",
-            "violations": violations
+            "violations": violations,
+            "requires_human_approval": False
         }
     
     return {
         "approved": True,
         "reason": "Passed all deterministic risk checks.",
-        "violations": []
+        "violations": [],
+        "requires_human_approval": False
     }
